@@ -1,0 +1,10 @@
+syntax = "proto2";
+
+package plcrash;
+
+message ApplicationInfo {
+	required string identifier = 1;
+	required string version = 2;
+	optional string marketing_version = 3;
+}
+

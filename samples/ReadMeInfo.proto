@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+message ReadMeInfo {
+	required int32 maxFiles = 1;
+	repeated string files = 2;
+}
+

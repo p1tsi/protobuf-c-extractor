@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package plcrash;
+
+message ReportInfo {
+	required bool user_requested = 1;
+	optional bytes uuid = 2;
+}
+

@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+message IDE {
+
+	message PortInfo {
+		optional string label = 1;
+		required bool present = 2;
+		required bool dmaCapable = 3;
+	}
+
+	repeated PortInfo perPort = 1;
+}
+

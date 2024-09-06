@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+message AudioConnectionControl {
+	required int32 operation = 1;
+}
+

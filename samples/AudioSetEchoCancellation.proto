@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+message AudioSetEchoCancellation {
+	required bool enable = 1;
+}
+

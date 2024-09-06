@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+message RegisterInfo {
+	optional string eax = 1;
+	optional string ebx = 2;
+	optional string ecx = 3;
+	optional string edx = 4;
+	optional string eax_amd = 5;
+	optional string ebx_amd = 6;
+	optional string ecx_amd = 7;
+	optional string edx_amd = 8;
+}
+

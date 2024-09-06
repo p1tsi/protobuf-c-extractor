@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+message OpNotificationMgr {
+	required int64 opNotificationTimeout = 1;
+}
+

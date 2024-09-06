@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+message LogVMX {
+	optional string logFileName = 1;
+	required bool enableLogging = 2;
+}
+

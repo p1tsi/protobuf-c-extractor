@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+message AudioSetPciSlotNumber {
+	required int32 pciSlotNumber = 1;
+}
+

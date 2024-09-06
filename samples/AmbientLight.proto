@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+message AmbientLight {
+	required int32 mode = 1;
+	required double illuminance = 2;
+}
+

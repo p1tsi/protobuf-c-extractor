@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+message LogVMXLog {
+	optional string logMessage = 1;
+}
+

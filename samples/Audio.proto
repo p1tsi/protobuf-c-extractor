@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+message Audio {
+	required bool present = 1;
+	required bool enableAEC = 2;
+	required bool autoDetect = 3;
+	required bool startConnected = 4;
+	required bool allowGuestControl = 5;
+	required int32 pciSlotNumber = 6;
+	required int32 numaNode = 7;
+	required int32 emulation = 8;
+	optional string hostDevice = 9;
+	required int32 connectionStatus = 10;
+}
+

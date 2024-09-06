@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+message AudioSetStartConnected {
+	required bool startConnected = 1;
+}
+

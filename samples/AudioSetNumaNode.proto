@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+message AudioSetNumaNode {
+	required int32 numaNode = 1;
+}
+

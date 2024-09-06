@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+message LogVMXSetLogLevel {
+	optional string extension = 1;
+	optional string module = 2;
+	required int32 level = 3;
+}
+

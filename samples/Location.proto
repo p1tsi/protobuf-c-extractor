@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+message Location {
+	required int32 mode = 1;
+	required double latitude = 2;
+	required double longitude = 3;
+	required double altitude = 4;
+	required double horizontalAccuracy = 5;
+	required double verticalAccuracy = 6;
+}
+

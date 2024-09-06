@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+message Reservations {
+
+	message Precise {
+		required int32 ftCptInPages = 1;
+
+		message InPages {
+			required int32 paged = 1;
+			required int32 nonPaged = 2;
+			required int32 vmkTotal = 3;
+		}
+
+		required InPages inPages = 2;
+	}
+
+	required Precise precise = 1;
+
+	message Maximum {
+
+		message InPages {
+			required int32 paged = 1;
+			required int32 nonPaged = 2;
+			required int32 vmkTotal = 3;
+		}
+
+		required InPages inPages = 1;
+	}
+
+	required Maximum maximum = 2;
+}
+

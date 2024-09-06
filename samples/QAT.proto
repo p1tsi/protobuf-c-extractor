@@ -1,0 +1,15 @@
+syntax = "proto2";
+
+message QAT {
+
+	message QATInfo {
+		optional string label = 1;
+		optional string deviceType = 2;
+		required int32 pciSlotNumber = 3;
+		required int32 capabilities = 4;
+		required int32 numaNode = 5;
+	}
+
+	repeated QATInfo perDevice = 1;
+}
+

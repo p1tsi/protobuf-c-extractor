@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+message AudioSetPresent {
+	required bool present = 1;
+}
+

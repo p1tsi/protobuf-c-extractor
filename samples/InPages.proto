@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+message InPages {
+	required int32 paged = 1;
+	required int32 nonPaged = 2;
+	required int32 vmkTotal = 3;
+}
+

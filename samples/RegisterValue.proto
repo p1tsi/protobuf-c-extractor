@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package plcrash;
+
+message RegisterValue {
+	required string name = 1;
+	required uint64 value = 2;
+}
+
