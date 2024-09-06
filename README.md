@@ -5,7 +5,7 @@ NB: this script does not work with fat binaries. Extract the binary for one arch
 
 ## Usage
 ```
-python3 protobuf-c-extractor.py -i sample -o /tmp
+python3 protobuf-c-extractor.py -i/--input <binary_file> -o/--output <path_to_dir>"
 ```
 
 # Example
