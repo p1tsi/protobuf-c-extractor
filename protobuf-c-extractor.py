@@ -3,12 +3,14 @@ import sys
 import argparse
 from mmap import mmap
 from enum import Enum
+import r2pipe
+
 
 SIZE_OF_PROTOBUF_C_MESSAGE_DESCRIPTOR = 120
 SIZE_OF_PROTOBUF_C_MESSAGE_FIELD_DESCRIPTOR = 72
 SIZE_OF_PROTOBUF_C_MESSAGE_ENUM_DESCRIPTOR = 24
 PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC = b'\xf9\xee\xaa\x28\x00\x00\x00\x00'
-
+PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC_STR = "f9eeaa2800000000"
 
 class FieldLabel(Enum):
     PROTOBUF_C_LABEL_REQUIRED = 0
@@ -37,92 +39,85 @@ class FieldType(Enum):
     PROTOBUF_C_TYPE_MESSAGE = 16
 
 
-def get_string(mm, start):
-    final_string = ""
-    i = 0
-    while mm[start + i]:
-        final_string += chr(mm[start + i])
-        i += 1
-
-    return final_string
-
-
 def process_label(label):
     return label.split("_")[-1].lower()
 
 
-def process_protobuf_c_enum_descriptor_protofile(mm, location, iter_no=0, file=None):
-    protofile = file
-    if protofile:
-        protofile.write("\n")
-        print(f"\t" * iter_no + f"\t{location:#0x}> MAGIC: 0x114315af")
+def get_string(string_offset):
+    str_ptr = r2.cmd(f"pv4 @ {string_offset}")
+    string = r2.cmd(f"ps @ {str_ptr}")
 
-        name_ptr = int.from_bytes(mm[location + 8:location + 12], "little")
-        name = get_string(mm, name_ptr)
-        print(f"\t" * iter_no + f"\t{location + 8:#0x}> {name_ptr:#0x}> NAME:\t{name}")
-
-        short_name_ptr = int.from_bytes(mm[location + 16:location + 20], "little")
-        short_name = get_string(mm, short_name_ptr)
-        print(f"\t" * iter_no + f"\t{location + 16:#0x}> {short_name_ptr:#0x}> SHORT NAME:\t{short_name}")
-
-        c_name_ptr = int.from_bytes(mm[location + 24:location + 28], "little")
-        c_name = get_string(mm, c_name_ptr)
-        print(f"\t" * iter_no + f"\t{location + 24:#0x}> {c_name_ptr:#0x}> C NAME:\t{c_name}")
-
-        package_name_ptr = int.from_bytes(mm[location + 32:location + 36], "little")
-        package_name = get_string(mm, package_name_ptr)
-        print(f"\t" * iter_no + f"\t{location + 32:#0x}> {package_name_ptr:#0x}> PACKAGE NAME:\t{package_name}")
-
-        protofile.write(f"\t" * iter_no + f"enum {short_name} " + "{")
-        protofile.write("\n")
-
-        n_values = int.from_bytes(mm[location + 40:location + 44], 'little')
-        print(f"\t" * iter_no + f"\t{location + 40:#0x}> N VALUES:\t{n_values}")
-
-        values_prt = int.from_bytes(mm[location + 48:location + 52], 'little')
-        for value in range(n_values):
-            enum_name_ptr = int.from_bytes(mm[values_prt:values_prt + 4], "little")
-            enum_name = get_string(mm, enum_name_ptr)
-            print(f"\t" * iter_no + f"\t\t{values_prt:#0x}> {enum_name_ptr:#0x}> NAME:\t{enum_name}")
-
-            enum_c_name_ptr = int.from_bytes(mm[values_prt + 8:values_prt + 12], "little")
-            enum_c_name = get_string(mm, enum_c_name_ptr)
-            print(f"\t" * iter_no + f"\t\t{values_prt + 8:#0x}> {enum_name_ptr:#0x}> C NAME:\t{enum_c_name}")
-
-            enum_value = int.from_bytes(mm[values_prt + 16:values_prt + 20], 'little')
-            print(f"\t" * iter_no + f"\t\t{values_prt + 16:#0x}> VALUE:\t{enum_value}")
-
-            protofile.write(f"\t" * iter_no + f"\t{enum_name} = {enum_value};")
-            protofile.write("\n")
-
-            print()
-            values_prt += SIZE_OF_PROTOBUF_C_MESSAGE_ENUM_DESCRIPTOR
-
-        protofile.write(f"\t" * iter_no + "}")
-        protofile.write("\n")
-        protofile.write("\n")
-
-        return short_name
+    return string.strip()
 
 
-def process_protobuf_c_message_descriptor_protofile(mm, location, out_dir=None, file=None, iter_no=0):
-    print(f"\t" * iter_no + f"{location:#0x}> MAGIC: 0x28eeaaf9")
+def get_pb_enum(enum_offset, iter_no=0, file=None):
+    prefix = "\t"*(iter_no)
 
-    name_ptr = int.from_bytes(mm[location + 8:location + 12], "little")
-    name = get_string(mm, name_ptr)
-    print(f"\t" * iter_no + f"{location + 8:#0x}> {name_ptr:#0x}> NAME:\t{name}")
+    magic = r2.cmd(f"px0 @ {enum_offset}").strip()
+    print(f"{prefix}ENUM MAGIC: {magic}")
 
-    short_name_ptr = int.from_bytes(mm[location + 16:location + 20], "little")
-    short_name = get_string(mm, short_name_ptr)
-    print(f"\t" * iter_no + f"{location + 16:#0x}> {short_name_ptr:#0x}> SHORT NAME:\t{short_name}")
+    file.write("\n")
 
-    c_name_ptr = int.from_bytes(mm[location + 24:location + 28], "little")
-    c_name = get_string(mm, c_name_ptr)
-    print(f"\t" * iter_no + f"{location + 24:#0x}> {c_name_ptr:#0x}> C NAME:\t{c_name}")
+    name = get_string(f"{enum_offset}+0x8")
+    print(f"{prefix}NAME: {name}")
 
-    package_name_ptr = int.from_bytes(mm[location + 32:location + 36], "little")
-    package_name = get_string(mm, package_name_ptr)
-    print(f"\t" * iter_no + f"{location + 32:#0x}> {package_name_ptr:#0x}> PACKAGE NAME:\t{package_name}")
+    short_name = get_string(f"{enum_offset}+0x10")
+    print(f"{prefix}SHORT NAME: {short_name}")
+
+    c_name = get_string(f"{enum_offset}+0x18")
+    print(f"{prefix}C NAME: {c_name}")
+
+    package_name = get_string(f"{enum_offset}+0x20")
+    print(f"{prefix}PACKAGE NAME: {package_name}")
+
+    file.write(f"{prefix}enum {short_name} " + "{")
+    file.write("\n")
+
+    values_count = int(r2.cmd(f"pv1px  @ {enum_offset}+0x28"), 16)
+    print(f"{prefix}VALUES COUNT: {values_count}")
+
+    values_ptr = r2.cmd(f'pv4 @ {enum_offset}+0x30').strip()
+
+    for i in range(values_count):
+        cur_value_ptr = f"{values_ptr} + {SIZE_OF_PROTOBUF_C_MESSAGE_ENUM_DESCRIPTOR*i}"
+
+        value_name = get_string(cur_value_ptr)
+        print(f"{prefix}\tVALUE NAME: {value_name}")
+
+        c_name = get_string(f"{cur_value_ptr}+0x8")
+        print(f"{prefix}\tC NAME: {c_name}")
+
+        value = int(r2.cmd(f"pv4 @ {cur_value_ptr}+0x10"), 16)
+        print(f"{prefix}\tVALUE: {value}")
+
+        file.write(f"{prefix}\t{value_name} = {value};")
+        file.write("\n")
+    
+    file.write(f"{prefix}" + "}")
+    file.write("\n")
+    file.write("\n")
+
+    return short_name
+
+
+def get_pb_struct(struct_offset, iter_no=0, out_dir=None, file=None):
+
+    prefix = "\t"*iter_no
+
+    name = get_string(f"{struct_offset}+0x8")
+    print(f"{prefix}NAME: {name}")
+    
+    short_name = get_string(f"{struct_offset}+0x10")
+    print(f"{prefix}SHORT NAME: {short_name}")
+
+    c_name = get_string(f"{struct_offset}+0x18")
+    print(f"{prefix}C NAME: {c_name}")
+    
+    package_name = get_string(f"{struct_offset}+0x20")
+    print(f"{prefix}PACKAGE NAME: {package_name}")
+    
+    size = int(r2.cmd(f'pv8 @ {struct_offset}+0x28'), 16)
+    print(f"{prefix}SIZE: {size}")
 
     if file:
         protofile = file
@@ -137,72 +132,57 @@ def process_protobuf_c_message_descriptor_protofile(mm, location, out_dir=None, 
     protofile.write(f"\t" * iter_no + "message " + short_name + " {")
     protofile.write("\n")
 
-    print(f"\t" * iter_no + f"{location + 40:#0x}> SIZE:\t{int.from_bytes(mm[location + 40:location + 48], 'little')}")
 
-    n_fields = int.from_bytes(mm[location + 48:location + 52], 'little')
-    print(f"\t" * iter_no + f"{location + 48:#0x}> N FIELDS:\t{n_fields}")
+    field_count = int(r2.cmd(f"pv1 @ {struct_offset}+0x30"), 16)
+    print(f"{prefix}FIELD COUNT: {field_count}")
+    
+    fields_ptr = r2.cmd(f'pv4 @ {struct_offset}+0x38').strip()
 
-    fields_ptr = int.from_bytes(mm[location + 56:location + 60], "little")
-    print(f"\t" * iter_no + f"{location + 56:#0x}> {fields_ptr:#0x}> FIELDS")
-    for field_no in range(1, n_fields + 1):
-        field_name_ptr = int.from_bytes(mm[fields_ptr:fields_ptr + 4], "little")
-        field_name = get_string(mm, field_name_ptr)
-        print(f"\t" * iter_no + f"\t{fields_ptr:#0x}> {field_name_ptr:#0x}> NAME:\t{field_name}")
+    for i in range(field_count):
+        cur_field_ptr = f"{fields_ptr} + {SIZE_OF_PROTOBUF_C_MESSAGE_FIELD_DESCRIPTOR*i}"
+        field_name = get_string(cur_field_ptr)
+        print(f"{prefix}\tFIELD NAME: {field_name}")
 
-        identifier = int.from_bytes(mm[fields_ptr + 8: fields_ptr + 12], 'little')
-        print(f"\t" * iter_no + f"\t{fields_ptr + 8:#0x}> ID:\t{identifier}")
-        label = FieldLabel(int.from_bytes(mm[fields_ptr + 12: fields_ptr + 16], 'little'))
-        print(f"\t" * iter_no + f"\t{fields_ptr + 12:#0x}> LABEL:\t{label.name}")
-        type = FieldType(int.from_bytes(mm[fields_ptr + 16: fields_ptr + 20], 'little'))
-        type_name = process_label(type.name)
-        print(f"\t" * iter_no + f"\t{fields_ptr + 16:#0x}> TYPE:\t{type.name}")
-        print(
-            f"\t" * iter_no + f"\t{fields_ptr + 20:#0x}> QUANTIFIER OFFSET:\t{int.from_bytes(mm[fields_ptr + 20: fields_ptr + 24], 'little')}")
-        print(
-            f"\t" * iter_no + f"\t{fields_ptr + 24:#0x}> OFFSET:\t{int.from_bytes(mm[fields_ptr + 24: fields_ptr + 32], 'little')}")
-        print(
-            f"\t" * iter_no + f"\t{fields_ptr + 32:#0x}> DESCRIPTOR:\t{int.from_bytes(mm[fields_ptr + 32:fields_ptr + 36], 'little'):#0x}")
+        field_id = int(r2.cmd(f"pv4 @ {cur_field_ptr}+0x8"), 16)
+        print(f"{prefix}\tFIELD ID: {field_id}")
+        
+        field_label = FieldLabel(int(r2.cmd(f"pv4 @ {cur_field_ptr}+0xc"), 16))
+        print(f"{prefix}\tFIELD LABEL: {field_label.name}")
+        
+        field_type = FieldType(int(r2.cmd(f"pv4 @ {cur_field_ptr}+0x10"), 16))
+        print(f"{prefix}\tFIELD TYPE: {field_type.name}")
+        type_name = process_label(field_type.name)
 
-        if type == FieldType.PROTOBUF_C_TYPE_MESSAGE:
+        quantifier = int(r2.cmd(f"pv4 @ {cur_field_ptr}+0x14"), 16)
+        print(f"{prefix}\tQUANTIFIER: {quantifier}")
+
+        off = int(r2.cmd(f"pv8 @ {cur_field_ptr}+0x18"), 16)
+        print(f"{prefix}\tOFFSET: {off}")
+
+        descriptor = r2.cmd(f"pv4 @ {cur_field_ptr}+0x20").strip()
+        print(f"{prefix}\tDESCRIPTOR: {descriptor}")
+
+        if field_type == FieldType.PROTOBUF_C_TYPE_MESSAGE:
             protofile.write("\n")
-            print()
-            type_name = process_protobuf_c_message_descriptor_protofile(mm, int.from_bytes(
-                mm[fields_ptr + 32:fields_ptr + 36], 'little'), iter_no=iter_no + 1, file=protofile)
-        if type == FieldType.PROTOBUF_C_TYPE_ENUM:
-            type_name = process_protobuf_c_enum_descriptor_protofile(mm,
-                                                                     int.from_bytes(mm[fields_ptr + 32:fields_ptr + 36],
-                                                                                    'little'), iter_no=iter_no + 1,
-                                                                     file=protofile)
+            type_name = get_pb_struct(descriptor, iter_no=iter_no+1, file=protofile)
+        
+        if field_type == FieldType.PROTOBUF_C_TYPE_ENUM:
+            type_name = get_pb_enum(descriptor, iter_no=iter_no+1, file=protofile)
 
-        protofile.write(f"\t" * iter_no + f"\t{process_label(label.name)} {type_name} {field_name} = {identifier};")
+        protofile.write(f"\t" * iter_no + f"\t{process_label(field_label.name)} {type_name} {field_name} = {field_id};")
         protofile.write("\n")
-
-        print(
-            f"\t" * iter_no + f"\t{fields_ptr + 36:#0x}> DEFAULT VALUE:\t{int.from_bytes(mm[fields_ptr + 36:fields_ptr + 40], 'little')}")
-
-        print("\t" * iter_no + "\t---")
-        fields_ptr += SIZE_OF_PROTOBUF_C_MESSAGE_FIELD_DESCRIPTOR
-
-    fields_sorted_ptr = int.from_bytes(mm[location + 64:location + 68], "little")
-    print(f"\t" * iter_no + f"{location + 64:#0x}> {fields_sorted_ptr:#0x}> FIELDS SORTED")
-
-    print(
-        f"\t" * iter_no + f"{location + 72:#0x}> FIELD RANGES:\t{int.from_bytes(mm[location + 72:location + 76], 'little')}")
-
-    message_init_ptr = int.from_bytes(mm[location + 80:location + 88], "little")
-    print(f"\t" * iter_no + f"{location + 80:#0x}> {message_init_ptr:#0x}> MESSAGE INIT FUNC", )
+        
+        default_value = int(r2.cmd(f"pv4 @ {cur_field_ptr}+0x24"), 16)
+        print(f"{prefix}\tDEFAULT VALUE: {default_value}")
+            
+        print()
+    
 
     protofile.write(f"\t" * iter_no + "}")
     protofile.write("\n")
     protofile.write("\n")
 
     return short_name
-
-
-def positions(mm):
-    pos = -1
-    while -1 != (pos := mm.find(PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC, pos + 1)):
-        yield pos
 
 
 if __name__ == "__main__":
@@ -220,17 +200,14 @@ if __name__ == "__main__":
         os.makedirs(args.output)
 
     print(f"FILE: {args.input}")
-    with open(f"{args.input}", "r+b") as lfile:
-        with mmap(lfile.fileno(), 0) as mapping:
+    file = args.input
+    r2 = r2pipe.open(file)
 
-            file_magic = mapping[:4]
-            if file_magic == b'\xca\xfe\xba\xbe':
-                print("!!! This script does not work with FAT binaries !!!")
-                print("Please extract the binary for one arch before.")
-                exit()
+    pb_struct_list = r2.cmdj(f"/xj {PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC_STR}")
+    for pb_struct in pb_struct_list:
 
-            for pos in positions(mapping):
-                process_protobuf_c_message_descriptor_protofile(mapping, pos, out_dir=args.output)
-                print()
-                print("#" * 50)
-                print()
+        struct_offset = pb_struct['offset']
+        get_pb_struct(struct_offset, out_dir=args.output)
+
+
+
